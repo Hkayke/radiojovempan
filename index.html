@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Locutor - JOVEM PAN NACIONAL PLAYER</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 600px; }
+        h1 { color: #f59e0b; font-size: 24px; margin-bottom: 5px; }
+        .status-container { background: #1e293b; padding: 15px; border-radius: 10px; width: 100%; max-width: 600px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+        .counter { font-size: 18px; font-weight: bold; color: #10b981; }
+        .mic-status { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .pulse-dot { width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; }
+        .pulse-dot.active { background-color: #10b981; animation: pulse 1s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+        .panel-block { background: #1e293b; padding: 20px; border-radius: 12px; width: 100%; max-width: 600px; margin-bottom: 15px; border: 1px solid #334155; }
+        h2 { font-size: 18px; margin-bottom: 15px; color: #cbd5e1; border-bottom: 1px solid #334155; padding-bottom: 5px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8; }
+        input[type="range"] { width: 100%; height: 8px; background: #475569; border-radius: 5px; accent-color: #f59e0b; }
+        input[type="file"] { display: block; margin-top: 5px; color: #94a3b8; font-size: 14px; }
+        .audio-player { width: 100%; margin-top: 10px; }
+        .btn { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: background 0.2s; font-size: 14px; }
+        .btn:hover { background: #2563eb; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .effects-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .effect-btn { background: #475569; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .effect-btn:hover { background: #64748b; }
+        .voice-options { display: flex; gap: 10px; }
+        .voice-btn { flex: 1; background: #475569; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .voice-btn.active { background: #f59e0b; color: #0f172a; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>JOVEM PAN NACIONAL PLAYER</h1>
+        <p style="color: #64748b; font-size: 14px;">Painel de Controle de Transmissão do Locutor</p>
+    </header>
+
+    <div class="status-container">
+        <div class="mic-status">
+            <div id="micDot" class="pulse-dot"></div>
+            <span id="micText">Microfone Desativado</span>
+        </div>
+        <div class="counter">Ouvintes: <span id="listenerCount">0</span></div>
+    </div>
+
+    <div class="panel-block">
+        <button class="btn btn-success" id="startBroadcastBtn">Iniciar Transmissão (Ativar Microfone)</button>
+        <p id="micError" style="color: #ef4444; font-size: 12px; margin-top: 5px; display: none;">Permissão de microfone negada!</p>
+    </div>
+
+    <div class="panel-block">
+        <h2>🔗 Divulgação da Rádio</h2>
+        <button class="btn" id="copyLinkBtn">Copiar Link do Ouvinte</button>
+    </div>
+
+    <div class="panel-block">
+        <h2>🎵 Trilha Sonora & Música de Fundo</h2>
+        <div class="control-group">
+            <label for="musicUpload">Enviar arquivo de áudio para a Rádio:</label>
+            <input type="file" id="musicUpload" accept="audio/*">
+            <audio id="bgMusic" class="audio-player" controls loop style="display:none;"></audio>
+        </div>
+        <div class="control-group">
+            <label for="musicVolume">Volume da Trilha: <span id="musicVolLabel">70%</span></label>
+            <input type="range" id="musicVolume" min="0" max="100" value="70">
+        </div>
+    </div>
+
+    <div class="panel-block">
+        <h2>🎙️ Modulação de Voz & Volume</h2>
+        <div class="control-group">
+            <label for="voiceVolume">Volume do Microfone: <span id="voiceVolLabel">100%</span></label>
+            <input type="range" id="voiceVolume" min="0" max="100" value="100">
+        </div>
+        <label>Efeito na Voz:</label>
+        <div class="voice-options">
+            <button class="voice-btn active" onclick="setVoiceEffect('normal')">Normal</button>
+            <button class="voice-btn" onclick="setVoiceEffect('grave')">Grave</button>
+            <button class="voice-btn" onclick="setVoiceEffect('eco')">Eco</button>
+        </div>
+    </div>
+
+    <div class="panel-block">
+        <h2>🔊 Vinhetas e Efeitos</h2>
+        <div class="effects-grid">
+            <button class="effect-btn" onclick="playFX('https://www.soundjay.com/buttons/sounds/button-4.mp3')">Efeito 1</button>
+            <button class="effect-btn" onclick="playFX('https://www.soundjay.com/buttons/sounds/button-10.mp3')">Efeito 2</button>
+            <button class="effect-btn" onclick="playFX('https://www.soundjay.com/buttons/sounds/button-16.mp3')">Efeito 3</button>
+            <button class="effect-btn" onclick="playFX('https://www.soundjay.com/buttons/sounds/button-18.mp3')">Efeito 4</button>
+        </div>
+        <div class="control-group" style="margin-top: 15px;">
+            <label for="fxUpload">Adicionar Nova Vinheta (Upload):</label>
+            <input type="file" id="fxUpload" accept="audio/*">
+        </div>
+    </div>
+
+    <script>
+        const bc = new BroadcastChannel('jovem_pan_nacional_stream');
+        let activeListeners = new Set();
+        let audioCtx, micSource, musicSource, fxSource;
+        let micGain, musicGain, fxGain;
+        let voiceEffect = 'normal';
+        let biquadFilter, delayNode, delayGain;
+        let streamStarted = false;
+
+        // Broadcast Sync
+        bc.onmessage = (event) => {
+            if (event.data.type === 'PING_LISTENER') {
+                activeListeners.add(event.data.id);
+                updateListenerDisplay();
+                sendStateToOuvinte();
+            } else if (event.data.type === 'PONG_LISTENER_LEAVE') {
+                activeListeners.delete(event.data.id);
+                updateListenerDisplay();
+            } else if (event.data.type === 'REQUEST_INITIAL_STATE') {
+                sendStateToOuvinte();
+            }
+        };
+
+        setInterval(() => {
+            bc.postMessage({ type: 'HEARTBEAT_CHECK' });
+            setTimeout(() => {
+                updateListenerDisplay();
+            }, 500);
+        }, 3000);
+
+        function updateListenerDisplay() {
+            document.getElementById('listenerCount').innerText = activeListeners.size;
+        }
+
+        function sendStateToOuvinte() {
+            bc.postMessage({
+                type: 'STATE_UPDATE',
+                hasLiveMic: streamStarted,
+                musicVol: document.getElementById('musicVolume').value / 100,
+                voiceVol: document.getElementById('voiceVolume').value / 100,
+                effect: voiceEffect
+            });
+        }
+
+        // Copy Link
+        document.getElementById('copyLinkBtn').addEventListener('click', () => {
+            const currentUrl = window.location.href;
+            const ouvinteUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/ouvinte.html';
+            navigator.clipboard.writeText(ouvinteUrl);
+            alert('Link do Ouvinte copiado para a área de transferência! Divulgue para o público: ' + ouvinteUrl);
+        });
+
+        // Start Audio Context & Microphone
+        document.getElementById('startBroadcastBtn').addEventListener('click', async () => {
+            if (streamStarted) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                micSource = audioCtx.createMediaStreamSource(stream);
+                micGain = audioCtx.createGain();
+                
+                // Audio nodes for effects
+                biquadFilter = audioCtx.createBiquadFilter();
+                delayNode = audioCtx.createDelay();
+                delayGain = audioCtx.createGain();
+                
+                // Build connection chain based on voiceEffect
+                applyVoiceProcessing();
+
+                document.getElementById('micDot').classList.add('active');
+                document.getElementById('micText').innerText = "Microfone Aberto (Normal)";
+                document.getElementById('startBroadcastBtn').style.display = 'none';
+                document.getElementById('micError').style.display = 'none';
+                streamStarted = true;
+                sendStateToOuvinte();
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('micError').style.display = 'block';
+            }
+        });
+
+        function applyVoiceProcessing() {
+            if (!micSource) return;
+            micSource.disconnect();
+            biquadFilter.disconnect();
+            delayNode.disconnect();
+            delayGain.disconnect();
+            micGain.disconnect();
+
+            if (voiceEffect === 'grave') {
+                biquadFilter.type = 'lowpass';
+                biquadFilter.frequency.setValueAtTime(300, audioCtx.currentTime);
+                micSource.connect(biquadFilter);
+                biquadFilter.connect(micGain);
+            } else if (voiceEffect === 'eco') {
+                delayNode.delayTime.setValueAtTime(0.3, audioCtx.currentTime);
+                delayGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                
+                micSource.connect(micGain);
+                micGain.connect(delayNode);
+                delayNode.connect(delayGain);
+                delayGain.connect(audioCtx.destination); // Echo feedback loop safely or directly out
+            } else {
+                micSource.connect(micGain);
+            }
+            micGain.connect(audioCtx.destination);
+            micGain.gain.setValueAtTime(document.getElementById('voiceVolume').value / 100, audioCtx.currentTime);
+        }
+
+        function setVoiceEffect(effect) {
+            voiceEffect = effect;
+            document.querySelectorAll('.voice-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            if (streamStarted) {
+                document.getElementById('micText').innerText = `Microfone Aberto (${effect.toUpperCase()})`;
+                applyVoiceProcessing();
+                sendStateToOuvinte();
+            }
+        }
+
+        // Handle local music playback & upload
+        const bgMusic = document.getElementById('bgMusic');
+        document.getElementById('musicUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                bgMusic.src = url;
+                bgMusic.style.display = 'block';
+                bgMusic.play();
+                // Send metadata hook/trigger link through channel
+                bc.postMessage({ type: 'PLAY_MUSIC_URL', src: url });
+            }
+        });
+
+        // Volume handlers
+        document.getElementById('musicVolume').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('musicVolLabel').innerText = val + '%';
+            if (bgMusic) bgMusic.volume = val / 100;
+            sendStateToOuvinte();
+        });
+
+        document.getElementById('voiceVolume').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('voiceVolLabel').innerText = val + '%';
+            if (micGain && audioCtx) {
+                micGain.gain.setValueAtTime(val / 100, audioCtx.currentTime);
+            }
+            sendStateToOuvinte();
+        });
+
+        // Trigger FX
+        function playFX(url) {
+            const audio = new Audio(url);
+            audio.volume = 1.0;
+            audio.play();
+            bc.postMessage({ type: 'PLAY_FX', url: url });
+        }
+
+        // Custom FX upload
+        document.getElementById('fxUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                const grid = document.querySelector('.effects-grid');
+                const btn = document.createElement('button');
+                btn.className = 'effect-btn';
+                btn.innerText = file.name.substring(0, 10) + '...';
+                btn.onclick = () => playFX(url);
+                grid.appendChild(btn);
+            }
+        });
+    </script>
+</body>
+</html>
