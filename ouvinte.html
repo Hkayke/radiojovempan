@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JOVEM PAN NACIONAL PLAYER ROLEPLAY</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: radial-gradient(circle, #1e293b 0%, #0f172a 100%); color: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; overflow: hidden; }
+        .card { background: rgba(30, 41, 59, 0.8); border: 2px solid #334155; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 100%; max-width: 450px; backdrop-filter: blur(10px); }
+        .live-indicator { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .dot { width: 14px; height: 14px; background-color: #64748b; border-radius: 50%; }
+        .dot.streaming { background-color: #10b981; animation: pulse 1s infinite alternate; box-shadow: 0 0 10px #10b981; }
+        @keyframes pulse { from { transform: scale(0.9); opacity: 0.6; } to { transform: scale(1.1); opacity: 1; } }
+        .marquee-container { background: #020617; padding: 12px; border-radius: 10px; overflow: hidden; white-space: nowrap; margin-bottom: 25px; border: 1px solid #1e293b; }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite; font-weight: bold; color: #f59e0b; font-size: 16px; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+        .logo-placeholder { font-size: 64px; margin-bottom: 20px; animation: float 4s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .btn-play { background: #f59e0b; color: #020617; border: none; width: 80px; height: 80px; border-radius: 50%; font-size: 32px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(245,158,11,0.4); transition: transform 0.2s, background 0.2s; -webkit-tap-highlight-color: transparent; }
+        .btn-play:active { transform: scale(0.95); }
+        .volume-container { margin-top: 25px; }
+        label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+        input[type="range"] { width: 100%; accent-color: #f59e0b; }
+        .status-msg { margin-top: 15px; font-size: 13px; color: #64748b; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="live-indicator">
+            <div id="statusDot" class="dot"></div>
+            <span id="statusLabel">RÁDIO OFF-LINE</span>
+        </div>
+
+        <div class="marquee-container">
+            <div class="marquee-text">VOCE ESTA CONECTADO NA RADIO JOVEM PAN NACIONAL PLAYER ROLEPLAY</div>
+        </div>
+
+        <div class="logo-placeholder">📻</div>
+
+        <div>
+            <button class="btn-play" id="playBtn">▶</button>
+        </div>
+
+        <div class="volume-container">
+            <label for="volControl">Controle de Áudio</label>
+            <input type="range" id="volControl" min="0" max="100" value="80">
+        </div>
+        
+        <p class="status-msg" id="infoMsg">Aguardando o locutor iniciar a transmissão...</p>
+    </div>
+
+    <script>
+        const bc = new BroadcastChannel('jovem_pan_nacional_stream');
+        const listenerId = 'user_' + Math.random().toString(36).substring(2, 9);
+        let isPlaying = false;
+        let isLive = false;
+        
+        // Audio local references triggered or synced
+        let audioContext, dummyNode;
+
+        // Ping locutor presence
+        function sendPing() {
+            bc.postMessage({ type: 'PING_LISTENER', id: listenerId });
+        }
+
+        // Join notifications
+        sendPing();
+        bc.postMessage({ type: 'REQUEST_INITIAL_STATE' });
+
+        // Keepalive loop
+        setInterval(sendPing, 2000);
+
+        window.addEventListener('beforeunload', () => {
+            bc.postMessage({ type: 'PONG_LISTENER_LEAVE', id: listenerId });
+        });
+
+        bc.onmessage = (event) => {
+            if (event.data.type === 'HEARTBEAT_CHECK') {
+                sendPing();
+            } else if (event.data.type === 'STATE_UPDATE') {
+                updateUIState(event.data);
+            } else if (event.data.type === 'PLAY_FX') {
+                if (isPlaying) {
+                    const fx = new Audio(event.data.url);
+                    fx.volume = document.getElementById('volControl').value / 100;
+                    fx.play();
+                }
+            }
+        };
+
+        function updateUIState(state) {
+            const dot = document.getElementById('statusDot');
+            const label = document.getElementById('statusLabel');
+            const infoMsg = document.getElementById('infoMsg');
+
+            if (state.hasLiveMic) {
+                isLive = true;
+                dot.classList.add('streaming');
+                label.innerText = "NO AR - AO VIVO";
+                label.style.color = "#10b981";
+                infoMsg.innerText = "O microfone do locutor está aberto e operando normal!";
+            } else {
+                isLive = false;
+                dot.classList.remove('streaming');
+                label.innerText = "RÁDIO OFF-LINE";
+                label.style.color = "#64748b";
+                infoMsg.innerText = "Aguardando o locutor iniciar a transmissão...";
+            }
+        }
+
+        // Android Native audio trigger compatibility
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!isPlaying) {
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = "⏸";
+                document.getElementById('playBtn').style.background = "#ef4444";
+                
+                // Initialize web audio context touch unlocked for Android
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if(audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            } else {
+                isPlaying = false;
+                document.getElementById('playBtn').innerText = "▶";
+                document.getElementById('playBtn').style.background = "#f59e0b";
+            }
+        });
+
+        document.getElementById('volControl').addEventListener('input', (e) => {
+            // Live track adjustments
+        });
+    </script>
+</body>
+</html>
